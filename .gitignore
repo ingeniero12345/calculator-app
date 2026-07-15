@@ -1,0 +1,20 @@
+# Dependencies
+node_modules/
+
+# Build output
+frontend/dist/
+backend/calculator
+
+# Test / coverage artifacts
+backend/coverage.out
+frontend/coverage/
+
+# Editor / OS
+.DS_Store
+.idea/
+.vscode/
+*.log
+
+# Env
+.env
+.env.local
