@@ -1,34 +1,37 @@
 ---
 name: engineering-quality-standards
-description: Estándares de calidad de ingeniería OBLIGATORIOS para cualquier trabajo de código en este proyecto. Aplicar SIEMPRE que se escriba, modifique, revise o refactorice código (backend o frontend), y con mayor exigencia en el backend y en las consultas a base de datos. Cubre Clean Code, Clean/Hexagonal Architecture, SOLID, patrones de diseño, rendimiento de consultas, pruebas y verificación antes de afirmar.
+description: MANDATORY engineering quality standards for any code work in this project. Apply ALWAYS when writing, modifying, reviewing, or refactoring code (backend or frontend), with stricter enforcement on the backend and on database queries. Covers Clean Code, Clean/Hexagonal Architecture, SOLID, design patterns, query performance, testing, and verifying before claiming success.
 ---
 
-## Estandares de calidad de ingenieria (OBLIGATORIO)
+## Engineering quality standards (MANDATORY)
 
-Toda entrega debe tener nivel de **desarrollador Java senior/experto**. No basta con que
-"funcione": el codigo debe ser de calidad, legible, mantenible y eficiente. Aplicar en la
-medida de lo posible (respetando el estilo existente del repo, sin reescribir de mas):
-- **idioma** todo en ingles
-- **Clean Code**: nombres expresivos, funciones cortas y con una sola responsabilidad,
-  sin duplicacion (DRY), sin codigo muerto, sin numeros/strings magicos (usar constantes/enums).
-- **Clean Architecture / Arquitectura Hexagonal**: respetar la separacion de capas
-  (controller -> service -> repository, puertos/adaptadores). La logica de negocio vive en
-  services, no en controllers ni repositories. No filtrar detalles de infraestructura hacia
-  el dominio. Seguir la organizacion por ramo (strategy/resolver) ya existente.
-- **Patrones de diseno**: usar el patron adecuado cuando aporte (Strategy para multiramo,
-  Factory, Mapper, etc.) y seguir los que el proyecto ya emplea. No sobre-ingenieria.
-- **SOLID** y bajo acoplamiento / alta cohesion.
-- **Rendimiento (especialmente BACKEND, y con foco en consultas)**:
-  - Evaluar SIEMPRE el costo de las consultas SQL/JPA. Evitar N+1, traer solo columnas
-    necesarias, usar indices, paginar, y preferir una consulta correlacionada/subconsulta o
-    JOIN bien pensado en vez de multiples viajes a BD. Cuidado con JOINs que duplican filas
-    (usar subconsulta escalar cuando aplique).
-  - Considerar transaccionalidad, timeouts (Hikari/Postgres) y posibles bloqueos.
-  - Medir/razonar la complejidad antes de dar por buena una solucion.
-- **Rigor**: al modificar front o back -y con mayor exigencia en el BACKEND- evaluar
-  explicitamente calidad, eficiencia y rendimiento, como lo haria un senior. Mejoras fuera de
-  alcance: anotarlas en el `CONTEXTO_*.md`.
-- **Pruebas**: acompanar el cambio con pruebas (JUnit+Mockito / Vitest) que cubran el
-  comportamiento y mantengan la cobertura. Sin comentarios en el codigo.
-- **Verificar antes de afirmar**: compilar y correr las pruebas; no declarar "funciona" sin
-  evidencia. Ser honesto sobre que quedo probado y que no.
+Every deliverable must meet the level of a **senior/expert Java developer**. It is not enough
+for it to "work": the code must be high quality, readable, maintainable, and efficient. Apply
+as far as reasonably possible (respecting the repo's existing style, without rewriting more
+than necessary):
+
+- **Language**: everything in English.
+- **Clean Code**: expressive names, short single-responsibility functions, no duplication
+  (DRY), no dead code, no magic numbers/strings (use constants/enums).
+- **Clean Architecture / Hexagonal Architecture**: respect the separation of layers
+  (controller -> service -> repository, ports/adapters). Business logic lives in services, not
+  in controllers or repositories. Do not leak infrastructure details into the domain. Follow
+  the existing per-domain organization (strategy/resolver).
+- **Design patterns**: use the appropriate pattern when it adds value (Strategy for
+  multi-domain, Factory, Mapper, etc.) and follow the ones the project already uses. No
+  over-engineering.
+- **SOLID** with low coupling and high cohesion.
+- **Performance (especially BACKEND, with a focus on queries)**:
+  - ALWAYS evaluate the cost of SQL/JPA queries. Avoid N+1, fetch only the necessary columns,
+    use indexes, paginate, and prefer a correlated subquery or a well-thought-out JOIN over
+    multiple round trips to the database. Beware of JOINs that duplicate rows (use a scalar
+    subquery when applicable).
+  - Consider transactionality, timeouts (Hikari/Postgres), and possible locks.
+  - Measure/reason about complexity before considering a solution good enough.
+- **Rigor**: when modifying front or back -and with greater demand on the BACKEND- explicitly
+  evaluate quality, efficiency, and performance, as a senior would. Out-of-scope improvements:
+  record them in the `CONTEXTO_*.md` file.
+- **Testing**: accompany the change with tests (JUnit+Mockito / Vitest) that cover the
+  behavior and maintain coverage. No comments in the code.
+- **Verify before claiming**: compile and run the tests; do not declare "it works" without
+  evidence. Be honest about what was tested and what was not.
