@@ -3,6 +3,7 @@ node_modules/
 
 # Build output
 frontend/dist/
+frontend/*.tsbuildinfo
 backend/calculator
 
 # Test / coverage artifacts
