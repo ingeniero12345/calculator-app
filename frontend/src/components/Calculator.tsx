@@ -10,12 +10,8 @@ type Status =
   | { kind: 'success'; result: number }
   | { kind: 'error'; message: string };
 
-/**
- * Calculator is the single interactive component: it lets the user pick an
- * operation, enter operands, and see the result returned by the backend.
- * Validation runs client-side first for instant feedback; the API is the source
- * of truth for domain errors such as division by zero.
- */
+const DISPLAY_PRECISION = 12;
+
 export function Calculator() {
   const [operationId, setOperationId] = useState<OperationId>('add');
   const [a, setA] = useState('');
@@ -25,8 +21,8 @@ export function Calculator() {
 
   const operation = getOperation(operationId);
 
-  async function handleSubmit(e: FormEvent) {
-    e.preventDefault();
+  async function handleSubmit(event: FormEvent) {
+    event.preventDefault();
 
     const aResult = validateOperand(a, 'First value');
     const bResult = operation.unary ? null : validateOperand(b, 'Second value');
@@ -48,8 +44,8 @@ export function Calculator() {
       };
       const response = await calculate(operationId, payload);
       setStatus({ kind: 'success', result: response.result });
-    } catch (err) {
-      const message = err instanceof ApiError ? err.message : 'Something went wrong';
+    } catch (error) {
+      const message = error instanceof ApiError ? error.message : 'Something went wrong';
       setStatus({ kind: 'error', message });
     }
   }
@@ -92,7 +88,7 @@ export function Calculator() {
             step="any"
             inputMode="decimal"
             value={a}
-            onChange={(e) => setA(e.target.value)}
+            onChange={(event) => setA(event.target.value)}
             aria-invalid={Boolean(fieldErrors.a)}
             aria-describedby={fieldErrors.a ? 'error-a' : undefined}
             placeholder="0"
@@ -115,7 +111,7 @@ export function Calculator() {
               step="any"
               inputMode="decimal"
               value={b}
-              onChange={(e) => setB(e.target.value)}
+              onChange={(event) => setB(event.target.value)}
               aria-invalid={Boolean(fieldErrors.b)}
               aria-describedby={fieldErrors.b ? 'error-b' : undefined}
               placeholder="0"
@@ -150,11 +146,7 @@ export function Calculator() {
   );
 }
 
-/**
- * Formats a numeric result for display, trimming floating-point noise while
- * preserving precision for legitimately long decimals.
- */
 function formatResult(value: number): string {
   if (Number.isInteger(value)) return String(value);
-  return String(Number(value.toPrecision(12)));
+  return String(Number(value.toPrecision(DISPLAY_PRECISION)));
 }

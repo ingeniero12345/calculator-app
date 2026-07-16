@@ -22,10 +22,11 @@ square root**.
 ```
 calculator-app/
 ├── backend/                  # Go microservice (stdlib only)
-│   ├── main.go               # server bootstrap + graceful shutdown
+│   ├── main.go               # composition root: builds service, starts server
 │   ├── internal/
-│   │   ├── calculator/       # pure arithmetic logic (100% test coverage)
-│   │   └── api/              # HTTP handlers, routing, validation, CORS
+│   │   ├── calculator/       # domain: pure arithmetic (100% coverage)
+│   │   ├── service/          # application: Strategy registry + business rules
+│   │   └── api/              # adapter: HTTP decode, error mapping, encode
 │   └── Dockerfile
 ├── frontend/                 # React + TypeScript (Vite + Vitest)
 │   ├── src/
@@ -110,8 +111,9 @@ go tool cover -func=coverage.out                  # per-function summary
 go tool cover -html=coverage.out                  # open HTML report
 ```
 
-Coverage: `calculator` package **100%**, `api` package **95%** of statements
-(`main.go` — the server bootstrap — is intentionally excluded from unit tests).
+Coverage: `calculator` (domain) **100%**, `service` (application) **100%**, `api`
+(adapter) **97.7%** of statements (`main.go` — the composition root — is
+intentionally excluded from unit tests).
 
 ### Frontend (Vitest + Testing Library)
 
@@ -206,13 +208,20 @@ All errors share one envelope: `{ "error": "<message>" }`.
 
 ## Design decisions
 
-- **Two clean layers in the backend.** `calculator` holds pure functions with no
-  knowledge of HTTP, so the maths is trivially unit-testable and reusable. `api`
-  handles transport: decoding, validation, dispatch, and error mapping.
-- **Operation registry over a switch.** Operations live in one map
-  (`internal/api/handler.go`) keyed by URL name. Adding an operation is a
-  one-line change plus its pure function — the routing, validation, and
-  discovery endpoint all pick it up automatically.
+- **Hexagonal layering in the backend.** Three layers with dependencies pointing
+  inward: `calculator` (domain — pure arithmetic, no I/O), `service`
+  (application — orchestrates the domain, owns all business rules and
+  validation), and `api` (adapter — HTTP decoding, error-to-status mapping,
+  encoding). The controller holds no business logic; it only translates between
+  HTTP and the service.
+- **Strategy pattern for operations.** The `service` layer resolves each
+  operation from a registry of strategies keyed by name
+  (`internal/service/service.go`). Adding an operation is a one-line entry plus
+  its pure domain function — routing, validation, and the discovery endpoint pick
+  it up automatically. No `switch` statements to maintain.
+- **Mapper between layers.** The adapter maps the domain-agnostic
+  `service.Result` to the transport DTO `CalculationResponse`, keeping HTTP
+  shapes out of the service.
 - **Standard library only (backend).** Go 1.22's `net/http` router supports
   method + path-variable patterns (`POST /api/v1/{operation}`), so no third-party
   web framework is needed. Fewer dependencies, smaller image, less to maintain.

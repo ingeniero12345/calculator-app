@@ -1,4 +1,3 @@
-// Command backend starts the calculator HTTP API server.
 package main
 
 import (
@@ -12,42 +11,47 @@ import (
 	"time"
 
 	"github.com/linktic/calculator-app/backend/internal/api"
+	"github.com/linktic/calculator-app/backend/internal/service"
+)
+
+const (
+	defaultPort          = "8080"
+	readHeaderTimeout    = 5 * time.Second
+	gracefulShutdownWait = 10 * time.Second
 )
 
 func main() {
-	addr := ":" + envOr("PORT", "8080")
+	address := ":" + envOr("PORT", defaultPort)
 
-	srv := &http.Server{
-		Addr:              addr,
-		Handler:           api.NewRouter(),
-		ReadHeaderTimeout: 5 * time.Second,
+	server := &http.Server{
+		Addr:              address,
+		Handler:           api.NewRouter(service.NewCalculator()),
+		ReadHeaderTimeout: readHeaderTimeout,
 	}
 
-	// Run the server in a goroutine so main can block on shutdown signals.
 	go func() {
-		log.Printf("calculator API listening on %s", addr)
-		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+		log.Printf("calculator API listening on %s", address)
+		if err := server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			log.Fatalf("server error: %v", err)
 		}
 	}()
 
-	// Graceful shutdown on SIGINT/SIGTERM (important for clean container stops).
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, syscall.SIGINT, syscall.SIGTERM)
 	<-stop
 
 	log.Println("shutting down...")
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), gracefulShutdownWait)
 	defer cancel()
-	if err := srv.Shutdown(ctx); err != nil {
+	if err := server.Shutdown(ctx); err != nil {
 		log.Fatalf("graceful shutdown failed: %v", err)
 	}
 	log.Println("server stopped")
 }
 
 func envOr(key, fallback string) string {
-	if v := os.Getenv(key); v != "" {
-		return v
+	if value := os.Getenv(key); value != "" {
+		return value
 	}
 	return fallback
 }

@@ -1,120 +1,78 @@
-// Package api exposes the calculator business logic over a small JSON/HTTP API.
 package api
 
 import (
 	"encoding/json"
 	"errors"
-	"math"
 	"net/http"
 
 	"github.com/linktic/calculator-app/backend/internal/calculator"
+	"github.com/linktic/calculator-app/backend/internal/service"
 )
 
-// operation describes a single arithmetic operation the API exposes.
-type operation struct {
-	// fn performs the calculation. For unary operations (e.g. sqrt) the second
-	// operand is ignored.
-	fn func(a, b float64) (float64, error)
-	// unary reports whether the operation uses only operand a, which lets us
-	// validate requests and document the API accurately.
-	unary bool
-}
-
-// operations is the registry mapping URL-friendly names to their implementation.
-// Adding a new operation is a one-line change here.
-var operations = map[string]operation{
-	"add":        {fn: calculator.Add},
-	"subtract":   {fn: calculator.Subtract},
-	"multiply":   {fn: calculator.Multiply},
-	"divide":     {fn: calculator.Divide},
-	"power":      {fn: calculator.Power},
-	"percentage": {fn: calculator.Percentage},
-	"sqrt":       {fn: func(a, _ float64) (float64, error) { return calculator.Sqrt(a) }, unary: true},
-}
-
-// CalculationRequest is the JSON body accepted by the operation endpoints.
-// Pointers are used so we can distinguish an omitted field from an explicit 0.
 type CalculationRequest struct {
 	A *float64 `json:"a"`
 	B *float64 `json:"b"`
 }
 
-// CalculationResponse is returned on a successful calculation.
 type CalculationResponse struct {
-	Operation string  `json:"operation"`
-	A         float64 `json:"a"`
+	Operation string   `json:"operation"`
+	A         float64  `json:"a"`
 	B         *float64 `json:"b,omitempty"`
-	Result    float64 `json:"result"`
+	Result    float64  `json:"result"`
 }
 
-// ErrorResponse is the uniform error envelope returned for all failures.
 type ErrorResponse struct {
 	Error string `json:"error"`
 }
 
-// Calculate handles POST /api/v1/{operation}. It decodes and validates the
-// request, dispatches to the matching operation and writes a JSON response.
-func Calculate(w http.ResponseWriter, r *http.Request) {
-	name := r.PathValue("operation")
-	op, ok := operations[name]
-	if !ok {
-		writeError(w, http.StatusNotFound, "unknown operation: "+name)
-		return
-	}
+type Handler struct {
+	calculator *service.Calculator
+}
 
-	var req CalculationRequest
-	dec := json.NewDecoder(r.Body)
-	dec.DisallowUnknownFields()
-	if err := dec.Decode(&req); err != nil {
+func NewHandler(calculator *service.Calculator) *Handler {
+	return &Handler{calculator: calculator}
+}
+
+func (h *Handler) Calculate(w http.ResponseWriter, r *http.Request) {
+	var request CalculationRequest
+	decoder := json.NewDecoder(r.Body)
+	decoder.DisallowUnknownFields()
+	if err := decoder.Decode(&request); err != nil {
 		writeError(w, http.StatusBadRequest, "invalid JSON body: "+err.Error())
 		return
 	}
 
-	if req.A == nil {
-		writeError(w, http.StatusBadRequest, "field 'a' is required")
-		return
-	}
-	if !op.unary && req.B == nil {
-		writeError(w, http.StatusBadRequest, "field 'b' is required for operation: "+name)
-		return
-	}
-	if err := validateFinite(req.A, req.B); err != nil {
-		writeError(w, http.StatusBadRequest, err.Error())
-		return
-	}
-
-	var b float64
-	if req.B != nil {
-		b = *req.B
-	}
-
-	result, err := op.fn(*req.A, b)
+	result, err := h.calculator.Compute(r.PathValue("operation"), request.A, request.B)
 	if err != nil {
-		// Domain errors (division by zero, etc.) are client-facing 422s: the
-		// request was well-formed but mathematically undefined.
-		writeError(w, http.StatusUnprocessableEntity, err.Error())
+		writeError(w, statusForError(err), err.Error())
 		return
 	}
 
-	resp := CalculationResponse{Operation: name, A: *req.A, Result: result}
-	if !op.unary {
-		resp.B = req.B
-	}
-	writeJSON(w, http.StatusOK, resp)
+	writeJSON(w, http.StatusOK, toResponse(result))
 }
 
-// validateFinite rejects NaN/Inf operands up front so we never attempt a
-// calculation on non-finite input.
-func validateFinite(a, b *float64) error {
-	for _, v := range []*float64{a, b} {
-		if v == nil {
-			continue
-		}
-		if math.IsNaN(*v) || math.IsInf(*v, 0) {
-			return errors.New("operands must be finite numbers")
-		}
+func toResponse(result service.Result) CalculationResponse {
+	return CalculationResponse{
+		Operation: result.Operation,
+		A:         result.A,
+		B:         result.B,
+		Result:    result.Value,
 	}
-	return nil
+}
+
+func statusForError(err error) int {
+	switch {
+	case errors.Is(err, service.ErrUnknownOperation):
+		return http.StatusNotFound
+	case errors.Is(err, service.ErrMissingOperand), errors.Is(err, service.ErrInvalidOperand):
+		return http.StatusBadRequest
+	case errors.Is(err, calculator.ErrDivisionByZero),
+		errors.Is(err, calculator.ErrNegativeSquareRoot),
+		errors.Is(err, calculator.ErrNotFinite):
+		return http.StatusUnprocessableEntity
+	default:
+		return http.StatusInternalServerError
+	}
 }
 
 func writeJSON(w http.ResponseWriter, status int, payload any) {
@@ -123,6 +81,6 @@ func writeJSON(w http.ResponseWriter, status int, payload any) {
 	_ = json.NewEncoder(w).Encode(payload)
 }
 
-func writeError(w http.ResponseWriter, status int, msg string) {
-	writeJSON(w, status, ErrorResponse{Error: msg})
+func writeError(w http.ResponseWriter, status int, message string) {
+	writeJSON(w, status, ErrorResponse{Error: message})
 }

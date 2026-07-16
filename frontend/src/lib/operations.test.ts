@@ -8,7 +8,7 @@ describe('getOperation', () => {
   });
 
   it('throws for an unknown operation', () => {
-    // @ts-expect-error deliberately passing an invalid id
+    // @ts-expect-error invalid id
     expect(() => getOperation('modulo')).toThrow();
   });
 

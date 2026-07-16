@@ -160,7 +160,6 @@
   font-weight: 600;
 }
 
-/* Small screens: stack operation buttons into two rows comfortably. */
 @media (max-width: 420px) {
   .calculator {
     padding: 1.25rem;
