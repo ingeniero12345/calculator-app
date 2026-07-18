@@ -1,0 +1,182 @@
+openapi: 3.0.3
+info:
+  title: Calculator API
+  version: "1.0.0"
+  description: |
+    REST microservice that owns the arithmetic for the full-stack calculator.
+    A single parameterized endpoint (`POST /api/v1/{operation}`) serves every
+    operation; two helper endpoints expose health and the operation catalog.
+
+    Operations are **binary** (`add`, `subtract`, `multiply`, `divide`,
+    `power`, `percentage`) or **unary** (`sqrt`). Binary operations require
+    both `a` and `b`; unary operations require only `a` and ignore `b`.
+servers:
+  - url: http://localhost:8080
+    description: Local backend
+
+paths:
+  /api/v1/{operation}:
+    post:
+      summary: Perform an arithmetic operation
+      description: |
+        Computes the result of `{operation}` over the supplied operands.
+        `sqrt` is unary and takes only `a`; every other operation is binary
+        and requires `a` and `b`.
+      operationId: calculate
+      parameters:
+        - name: operation
+          in: path
+          required: true
+          description: Operation to perform.
+          schema:
+            type: string
+            enum: [add, subtract, multiply, divide, power, percentage, sqrt]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CalculationRequest'
+            examples:
+              binary:
+                summary: Binary operation (e.g. add)
+                value: { a: 10, b: 4 }
+              unary:
+                summary: Unary operation (sqrt)
+                value: { a: 144 }
+      responses:
+        "200":
+          description: Successful calculation.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CalculationResponse'
+              examples:
+                binary:
+                  value: { operation: add, a: 10, b: 4, result: 14 }
+                unary:
+                  value: { operation: sqrt, a: 144, result: 12 }
+        "400":
+          description: >
+            Malformed JSON, unknown field, missing required operand, or a
+            non-finite input operand.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                missingOperand:
+                  value: { error: "missing required operand: 'divide' requires 'b'" }
+        "404":
+          description: Unknown operation name.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example: { error: "unknown operation: modulo" }
+        "422":
+          description: >
+            Well-formed request that is mathematically undefined: division by
+            zero, square root of a negative number, or a non-finite result
+            (overflow).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                divideByZero:
+                  value: { error: "division by zero is undefined" }
+                negativeSqrt:
+                  value: { error: "square root of a negative number is undefined" }
+
+  /api/v1/health:
+    get:
+      summary: Liveness probe
+      operationId: health
+      responses:
+        "200":
+          description: Service is up.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: ok
+                required: [status]
+
+  /api/v1/operations:
+    get:
+      summary: List supported operations
+      operationId: listOperations
+      responses:
+        "200":
+          description: Catalog of operations and their arity.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  operations:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        name:
+                          type: string
+                          example: sqrt
+                        unary:
+                          type: boolean
+                          example: true
+                      required: [name, unary]
+                required: [operations]
+
+components:
+  schemas:
+    CalculationRequest:
+      type: object
+      description: >
+        Operands. `a` is always required. `b` is required for binary
+        operations and ignored for `sqrt`. Unknown fields are rejected.
+      additionalProperties: false
+      properties:
+        a:
+          type: number
+          format: double
+          description: First operand (required for every operation).
+          example: 10
+        b:
+          type: number
+          format: double
+          description: Second operand (required for binary operations).
+          example: 4
+      required: [a]
+    CalculationResponse:
+      type: object
+      properties:
+        operation:
+          type: string
+          example: add
+        a:
+          type: number
+          format: double
+          example: 10
+        b:
+          type: number
+          format: double
+          description: Present only for binary operations.
+          example: 4
+        result:
+          type: number
+          format: double
+          example: 14
+      required: [operation, a, result]
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+          description: Human-readable error message.
+          example: division by zero is undefined
+      required: [error]

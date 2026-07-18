@@ -8,6 +8,10 @@ source of validation and edge-case handling.
 Supported operations: **add, subtract, multiply, divide, power, percentage,
 square root**.
 
+**Repository:** https://github.com/ingeniero12345/calculator-app
+
+![Calculator frontend](docs/frontend.png)
+
 ```
 ┌─────────────────────┐        POST /api/v1/{op}        ┌──────────────────────┐
 │  React + TS (Vite)  │  ───────  {a, b} JSON  ───────▶ │  Go REST microservice │
@@ -194,6 +198,18 @@ curl http://localhost:8080/api/v1/health        # {"status":"ok"}
 curl http://localhost:8080/api/v1/operations    # lists supported operations
 ```
 
+### API documentation (Swagger / OpenAPI)
+
+An OpenAPI 3 spec is embedded in the binary (`embed.FS`, no third-party
+dependencies) and served alongside an interactive Swagger UI:
+
+```bash
+open http://localhost:8080/api/v1/docs           # interactive Swagger UI
+curl http://localhost:8080/api/v1/openapi.yaml   # raw OpenAPI 3 spec
+```
+
+The source of truth is [backend/internal/api/docs/openapi.yaml](backend/internal/api/docs/openapi.yaml).
+
 ### Error model
 
 All errors share one envelope: `{ "error": "<message>" }`.
@@ -203,6 +219,44 @@ All errors share one envelope: `{ "error": "<message>" }`.
 | `400`  | Malformed JSON, missing required operand, unknown field, non-finite input |
 | `404`  | Unknown operation name                                            |
 | `422`  | Well-formed request but mathematically undefined (÷0, √ of negative, overflow) |
+
+---
+
+## Prompts
+
+These are the prompts you can give the AI assistant (Claude) to reproduce this
+project from scratch. A fuller breakdown of every step lives in
+[PROMPTS.md](PROMPTS.md).
+
+> **Before doing any code work, load and apply the
+> `engineering-quality-standards` skill** (in
+> [.claude/skills/engineering-quality-standards](.claude/skills/engineering-quality-standards/SKILL.md)).
+> It is mandatory: everything in English, Clean Code, Clean/Hexagonal
+> Architecture, SOLID, appropriate design patterns, tested behaviour, and
+> "verify before claiming success" (compile and run the tests — no declaring
+> "it works" without evidence).
+
+**Main prompt**
+
+> Build a full-stack calculator: a **React + TypeScript** frontend and a **Go**
+> REST microservice backend. The backend owns the arithmetic and is the
+> authoritative source of validation and edge cases; the frontend collects and
+> validates input, calls the API, and renders the result. Support add, subtract,
+> multiply, divide, power, percentage, and square root. Use meaningful HTTP
+> status codes (400 for malformed input, 404 for unknown operations, 422 for
+> mathematically undefined requests) and a single consistent error envelope.
+> Keep the backend **standard-library only** (no web framework). Cover the
+> behaviour with unit tests on both layers, and provide Dockerfiles plus a
+> docker-compose to run everything together.
+>
+> Apply the `engineering-quality-standards` skill throughout.
+
+**Follow-up prompt (Swagger / OpenAPI)**
+
+> Add API documentation with Swagger. Keep the backend standard-library only, so
+> write a hand-authored OpenAPI 3 spec, embed it with `embed.FS`, and serve it
+> together with a Swagger UI page from the Go service — do not add any
+> third-party Go dependency. Apply the `engineering-quality-standards` skill.
 
 ---
 

@@ -13,6 +13,8 @@ func NewRouter(calculator *service.Calculator) http.Handler {
 	mux.HandleFunc("POST /api/v1/{operation}", handler.Calculate)
 	mux.HandleFunc("GET /api/v1/health", handleHealth)
 	mux.HandleFunc("GET /api/v1/operations", handleOperations(calculator))
+	mux.HandleFunc("GET /api/v1/docs", handleDocs)
+	mux.HandleFunc("GET /api/v1/openapi.yaml", handleOpenAPISpec)
 
 	return withMiddleware(mux)
 }
